@@ -1,0 +1,61 @@
+services:
+  build-otp:
+    image: docker.io/opentripplanner/opentripplanner:latest
+    environment:
+      - JAVA_TOOL_OPTIONS=-Xmx8g
+    volumes:
+      - ./data:/var/opentripplanner
+    command: --build --save
+    deploy:
+      resources:
+        limits:
+          memory: 8g
+    container_name: build_otp
+    restart: "no"
+  
+  serve-otp:
+    image: docker.io/opentripplanner/opentripplanner:latest
+    environment:
+      - JAVA_TOOL_OPTIONS=-Xmx8g
+    volumes:
+      - ./data:/var/opentripplanner
+    ports:
+      - "8081:8080"
+    command: --load --serve
+    deploy:
+      resources:
+        limits:
+          memory: 8g
+    depends_on:
+      - build-otp
+    container_name: serve_otp
+    restart: unless-stopped
+  
+  osrm:
+    build:
+      context: .
+      args:
+        SPEED_FILE: ./data/speeds.csv  # Replace with your actual speed file name
+        PBF_FILE: ./data/osm.pbf  # Replace with your actual PBF file name
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data/speeds.csv:/media/speed_file.csv
+      - ./data/osm.pbf:/media/location_file.osm.pbf
+    deploy:
+      resources:
+        limits:
+          memory: 4g  # Adjust memory limit as needed
+    restart: unless-stopped
+    container_name: osrm
+
+  vroom:
+    image: ghcr.io/vroom-project/vroom-docker:v1.14.0
+    environment:
+      - VROOM_ROUTER=osrm
+    volumes:
+      - ./data/conf:/conf
+    ports:
+      - "3000:3000"
+    depends_on:
+      - osrm
