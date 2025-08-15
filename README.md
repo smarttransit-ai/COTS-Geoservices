@@ -32,17 +32,14 @@ Since these have different timezones and OTP only supports single timezones, we 
 0. `mkdir -p ./scripts/data/input`
 1. Place all zipped GTFS files in `./scripts/data`.
     ```bash
-    cd ./scripts/data/input
-    curl https://data.trilliumtransit.com/gtfs/jackson-tn-us/jackson-tn-us.zip?utm_source=transitland -o jta.zip
-    curl https://gtfs.mata.cadavl.com/MATA/GTFS/GTFS_MATA.zip -o mata.zip
-    curl https://www.gocarta.org/wp-content/uploads/2025/05/GTFS-1.zip?utm_source=transitland -o carta.zip
-    curl https://www.wegotransit.com/googleexport/google_transit.zip?utm_source=transitland -o wego.zip
+    cd ./scripts/data/input && \
+    curl https://data.trilliumtransit.com/gtfs/jackson-tn-us/jackson-tn-us.zip?utm_source=transitland -o jta.zip && \
+    curl https://gtfs.mata.cadavl.com/MATA/GTFS/GTFS_MATA.zip -o mata.zip && \
+    curl https://www.gocarta.org/wp-content/uploads/2025/05/GTFS-1.zip?utm_source=transitland -o carta.zip && \
+    curl https://www.wegotransit.com/googleexport/google_transit.zip?utm_source=transitland -o wego.zip && \
     curl https://knoxville.syncromatics.com/gtfs?utm_source=transitland -o kat.zip
     ```
-2. `cd ../..`
-2. `python3.10 -m venv .venv`
-3. `pip install -r requirements.txt`
-4. `python gtfs_merging.py`
+2. `docker run -it --rm --name my-running-script -v "$PWD/scripts":/usr/src/myapp -w /usr/src/myapp python:3.10 bash -c "pip install --no-cache-dir -r requirements.txt && python gtfs_merging.py"`
 5. Move or copy the new zipped gtfs `sciprts/data/temp_output/MERGED_gtfs.zip` to `./data`.
 
 ## Setup and Deployment
