@@ -201,3 +201,5 @@ data/osm.pbf
 data/gtfs.zip
 data/graph.obj
 scripts/data
+custom_files/
+gtfs_feeds/

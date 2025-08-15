@@ -9,6 +9,9 @@ OTP_URL = f"http://{OTP_HOST}:{OTP_PORT}"
 VROOM_HOST = "localhost"
 VROOM_PORT = 3000
 VROOM_URL = f"http://{VROOM_HOST}:{VROOM_PORT}"
+VALHALLA_HOST = "localhost"
+VALHALLA_PORT = 8002
+VALHALLA_URL = f"http://{VALHALLA_HOST}:{VALHALLA_PORT}/status"
 
 if __name__ == "__main__":
     print("Verifying deployment...")
@@ -31,3 +34,4 @@ if __name__ == "__main__":
     check_url(f"http://{OSRM_URL}-86.9024502,35.9067283")
     check_url(OTP_URL)
     check_url(f"{VROOM_URL}/health")
+    check_url(VALHALLA_URL)

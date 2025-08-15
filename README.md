@@ -2,6 +2,7 @@
 - [Open Source Routing Machine (OSRM)](#osrm)
 - [Vehicle Routing Open-source Optimization Machine (VROOM)](#vroom)
 - [OpenTripPlanner (OTP)](#otp)
+- [Valhalla](#valhalla)
 
 This is a repository for several commercial, free and open source solvers and planners that we regularly use in the lab.  
 The default configuration is for the state of Tennessee with included GTFS for the following transit agencies:
@@ -59,6 +60,22 @@ Since these have different timezones and OTP only supports single timezones, we 
     > Ensure that the gtfs, osm and speeds all point to the same area and have some overlap
 3. `docker compose up -d`
 
+
+## Valhalla
+> This seems to be tacked on but this setup is also working and I just wanted to keep everything in the same place.
+This is unexplored and adjusting speeds for [time accurate routing](https://github.com/smarttransit-ai/valhalla/tree/main) is documented but not too straightforward. Valhalla offers capabilities that are not available in OSRM and can offer an ``easier'' way to inject speeds across 288 time points through the day.
+1. `mkdir valhalla_data`
+2. `mkdir gtfs_feeds`
+3. `wget -O custom_files/tennessee-latest.osm.pbf https://download.geofabrik.de/north-america/us/tennessee-latest.osm.pbf`
+4. Unzip the merged gtfs to gtfs_feeds so it looks like `gtfs_feeds/merged/*.txt`
+5. Run Valhalla docker with build_transit and build_time_zones set to be true by force.
+```bash
+docker run -dt -v $PWD/gtfs_feeds:/gtfs_feeds -v $PWD/custom_files:/custom_files -p 8002:8002 -e build_transit=Force -e build_time_zones=Force --name valhalla ghcr.io/nilsnolde/docker-valhalla/valhalla:latest
+```
+With Valhalla you can easily do Isochrone time maps.
+
+[Reference](https://github.com/valhalla/valhalla/tree/master/docker)
+
 ## Verify
 This is setup for the default location of tennessee.
 1. Run `python scripts/verify_deployment.py`
@@ -68,11 +85,14 @@ Verifying deployment...
 OSRM URL: localhost:8080/nearest/v1/driving/
 OTP URL: http://localhost:8081
 VROOM URL: http://localhost:3000
+Valhalla URL: http://localhost:8002
 Success: http://localhost:8080/nearest/v1/driving/-86.9024502,35.9067283 is reachable.
 Success: http://localhost:8081 is reachable.
 Success: http://localhost:3000/health is reachable.
+Success: http://localhost:8002/status is reachable.
 ```
 
 ## Things to do
 1. Create sample commands for the services.
 2. Link to APIs.
+
