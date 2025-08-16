@@ -38,11 +38,15 @@ Since these have different timezones and OTP only supports single timezones, we 
 1. Place all zipped GTFS files in `./scripts/data`.
     ```bash
     cd ./scripts/data/input && \
-    curl https://data.trilliumtransit.com/gtfs/jackson-tn-us/jackson-tn-us.zip?utm_source=transitland -o jta.zip && \
-    curl https://gtfs.mata.cadavl.com/MATA/GTFS/GTFS_MATA.zip -o mata.zip && \
-    curl https://www.gocarta.org/wp-content/uploads/2025/05/GTFS-1.zip?utm_source=transitland -o carta.zip && \
-    curl https://www.wegotransit.com/googleexport/google_transit.zip?utm_source=transitland -o wego.zip && \
-    curl https://knoxville.syncromatics.com/gtfs?utm_source=transitland -o kat.zip
+    curl -L --fail --retry 3 https://data.trilliumtransit.com/gtfs/jackson-tn-us/jackson-tn-us.zip?utm_source=transitland -o jta.zip && \
+    curl -L --fail --retry 3 https://gtfs.mata.cadavl.com/MATA/GTFS/GTFS_MATA.zip -o mata.zip && \
+    curl -L --fail --retry 3 https://www.gocarta.org/wp-content/uploads/2025/05/GTFS-1.zip?utm_source=transitland -o carta.zip && \
+    curl -L --fail --retry 3 https://www.wegotransit.com/googleexport/google_transit.zip?utm_source=transitland -o wego.zip && \
+    curl -L --fail --retry 3 https://knoxville.syncromatics.com/gtfs?utm_source=transitland -o kat.zip
+    ```
+2. For a special handmade BlueOval City GTFS:
+    ```bash
+    curl -L --fail --retry 3 -o boc_gtfs.zip 'https://www.dropbox.com/scl/fi/86f760nfqgddv459oibjj/boc_gtfs.zip?rlkey=hsob65d3ddnjm639itrj1k87y&st=7bc8ebbh&dl=1'
     ```
 2. `docker run -it --rm --name my-running-script -v "$PWD/scripts":/usr/src/myapp -w /usr/src/myapp python:3.10 bash -c "pip install --no-cache-dir -r requirements.txt && python gtfs_merging.py"`
 5. Move or copy the new zipped gtfs `sciprts/data/temp_output/MERGED_gtfs.zip` to `./data`.
