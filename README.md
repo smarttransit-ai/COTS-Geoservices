@@ -13,9 +13,13 @@ The default configuration is for the state of Tennessee with included GTFS for t
 * [CARTA](https://www.gocarta.org/wp-content/uploads/2025/05/GTFS-1.zip)
 > These GTFS have been in no way cleaned and processed for mistakes, these are as is and are the latest versions as of 08-14-2025 and based on what is available from [Transitland](https://www.transit.land/).
 
-## Clone
+# Setup
 `git clone git@github.com:smarttransit-ai/COTS_SOLVERS.git`
 
+## Docker
+Follow the instructions [here](https://docs.docker.com/get-started/get-docker/).
+
+# Containers
 ## OSRM
 This uses a custom build that increases the potential alternative routes for any given query. See this [dockerhub](https://hub.docker.com/repository/docker/linusmotu/osrm-more-alt-linux) for more information.
 
