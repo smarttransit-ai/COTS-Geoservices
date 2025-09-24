@@ -203,3 +203,5 @@ data/graph.obj
 scripts/data
 custom_files/
 gtfs_feeds/
+data/valhalla/**
+data/shared/**

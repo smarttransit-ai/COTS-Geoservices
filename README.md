@@ -37,52 +37,42 @@ Since these have different timezones and OTP only supports single timezones, we 
 0. `mkdir -p ./scripts/data/input`
 1. Place all zipped GTFS files in `./scripts/data`.
     ```bash
-    cd ./scripts/data/input && \
-    curl -L --fail --retry 3 https://data.trilliumtransit.com/gtfs/jackson-tn-us/jackson-tn-us.zip?utm_source=transitland -o jta.zip && \
-    curl -L --fail --retry 3 https://gtfs.mata.cadavl.com/MATA/GTFS/GTFS_MATA.zip -o mata.zip && \
-    curl -L --fail --retry 3 https://www.gocarta.org/wp-content/uploads/2025/05/GTFS-1.zip?utm_source=transitland -o carta.zip && \
-    curl -L --fail --retry 3 https://www.wegotransit.com/googleexport/google_transit.zip?utm_source=transitland -o wego.zip && \
-    curl -L --fail --retry 3 https://knoxville.syncromatics.com/gtfs?utm_source=transitland -o kat.zip
+    curl -L --fail --retry 3 "https://data.trilliumtransit.com/gtfs/jackson-tn-us/jackson-tn-us.zip?utm_source=transitland" -o ./scripts/data/input/jta.zip && \
+    curl -L --fail --retry 3 "https://gtfs.mata.cadavl.com/MATA/GTFS/GTFS_MATA.zip" -o ./scripts/data/input/mata.zip && \
+    curl -L --fail --retry 3 "https://www.gocarta.org/wp-content/uploads/2025/05/GTFS-1.zip?utm_source=transitland" -o ./scripts/data/input/carta.zip && \
+    curl -L --fail --retry 3 "https://www.wegotransit.com/GoogleExport/Google_Transit.zip" -o ./scripts/data/input/wego.zip && \
+    curl -L --fail --retry 3 -H "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64)" \
+    "https://knoxville.syncromatics.com/gtfs?utm_source=transitland" -o ./scripts/data/input/kat.zip
     ```
 2. For a special handmade BlueOval City GTFS:
     ```bash
     curl -L --fail --retry 3 -o boc_gtfs.zip 'https://www.dropbox.com/scl/fi/86f760nfqgddv459oibjj/boc_gtfs.zip?rlkey=hsob65d3ddnjm639itrj1k87y&st=7bc8ebbh&dl=1'
     ```
-2. `docker run -it --rm --name my-running-script -v "$PWD/scripts":/usr/src/myapp -w /usr/src/myapp python:3.10 bash -c "pip install --no-cache-dir -r requirements.txt && python gtfs_merging.py"`
-5. Move or copy the new zipped gtfs `sciprts/data/temp_output/MERGED_gtfs.zip` to `./data`.
+2. `docker run -it --rm --name my-running-script -v "$PWD/scripts":/usr/src/myapp -w /usr/src/myapp python:3.10 bash -c "pip install --no-cache-dir -r requirements.txt && python main.py"`
+5. Move or copy the new zipped gtfs `sciprts/data/temp_output/MERGED_gtfs.zip` to `./data/shared/gtfs_feeds`.
 
 ## Setup and Deployment
 1. Install docker desktop or docker on the server.
-3. Download and place the pbf file into the `./data` folder.
-    `curl https://download.geofabrik.de/north-america/us/tennessee-latest.osm.pbf -o ./data/osm.pbf`
-3. Generate speeds.csv: `touch ./data/speeds.csv`
+3. Download and place the pbf file into the `./data/shared` folder.
+    `curl https://download.geofabrik.de/north-america/us/tennessee-latest.osm.pbf -o ./data/shared/osm.pbf`
+3. Generate speeds.csv: `touch ./data/osrm/speeds.csv`
 2. Ensure that the `./data` folder has the following contents:
-    ```bash
-    └── data 
-        ├── conf # for VROOM
-        │   └── config.yml # used by VROOM to point to OSRM
-        ├── Merged_gtfs.zip # for OTP, GTFS you want to use
-        ├── osm.pbf # tiles used for OSRM and OTP
-        └── speeds.csv # for setting up edge weights on OSRM
+    ```bash.
+    ├── opentripplanner
+    ├── osrm
+    │   └── speeds.csv # for setting up edge weights on OSRM
+    ├── shared
+    │   ├── merged_gtfs.zip # for OTP/Valhalla, GTFS you want to use
+    │   ├── merged_gtfs #unzipped gtfs folder for valhalla
+    │   └── osm.pbf # tiles used for OSRM and OTP
+    ├── valhalla # Mounted to Valhalla
+    └── vroom
+        └── config.yml # used by VROOM to point to OSRM/Valhalla services
     ```
     > Ensure that the gtfs, osm and speeds all point to the same area and have some overlap
-3. `docker compose up -d`
+3. `docker compose -f docker-compose.yml --env-file .env build`
+3. `docker compose -f docker-compose.yml --env-file .env up`
 
-
-## Valhalla
-> This seems to be tacked on but this setup is also working and I just wanted to keep everything in the same place.
-This is unexplored and adjusting speeds for [time accurate routing](https://github.com/smarttransit-ai/valhalla/tree/main) is documented but not too straightforward. Valhalla offers capabilities that are not available in OSRM and can offer an ``easier'' way to inject speeds across 288 time points through the day.
-1. `mkdir valhalla_data`
-2. `mkdir gtfs_feeds`
-3. `wget -O custom_files/tennessee-latest.osm.pbf https://download.geofabrik.de/north-america/us/tennessee-latest.osm.pbf`
-4. Unzip the merged gtfs to gtfs_feeds so it looks like `gtfs_feeds/merged/*.txt`
-5. Run Valhalla docker with build_transit and build_time_zones set to be true by force.
-```bash
-docker run -dt -v $PWD/gtfs_feeds:/gtfs_feeds -v $PWD/custom_files:/custom_files -p 8002:8002 -e build_transit=Force -e build_time_zones=Force --name valhalla ghcr.io/nilsnolde/docker-valhalla/valhalla:latest
-```
-With Valhalla you can easily do Isochrone time maps.
-
-[Reference](https://github.com/valhalla/valhalla/tree/master/docker)
 
 ## Verify
 This is setup for the default location of tennessee.
@@ -104,3 +94,6 @@ Success: http://localhost:8002/status is reachable.
 1. Create sample commands for the services.
 2. Link to APIs.
 
+# References
+* [Valhalla](https://github.com/valhalla/valhalla/tree/master/docker)
+* [time accurate routing](https://github.com/smarttransit-ai/valhalla/tree/main)

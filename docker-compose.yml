@@ -4,7 +4,7 @@ services:
     environment:
       - JAVA_TOOL_OPTIONS=-Xmx8g
     volumes:
-      - ./data:/var/opentripplanner
+      - ./data/shared:/var/opentripplanner
     command: --build --save
     deploy:
       resources:
@@ -12,36 +12,43 @@ services:
           memory: 8g
     container_name: build_otp
     restart: "no"
+    healthcheck:
+      test: ["CMD-SHELL", "test -f /var/opentripplanner/graph.obj"]
+      interval: 10s
+      retries: 10
+      start_period: 30s
   
   serve-otp:
     image: docker.io/opentripplanner/opentripplanner:latest
     environment:
       - JAVA_TOOL_OPTIONS=-Xmx8g
     volumes:
-      - ./data:/var/opentripplanner
+      - ./data/shared:/var/opentripplanner
     ports:
-      - "8081:8080"
+      - ${OTP_PORT}:8080
     command: --load --serve
     deploy:
       resources:
         limits:
           memory: 8g
     depends_on:
-      - build-otp
+      build-otp:
+        condition: service_healthy
     container_name: serve_otp
     restart: unless-stopped
   
   osrm:
     build:
       context: .
+      dockerfile: OSRM_Dockerfile
       args:
-        SPEED_FILE: ./data/speeds.csv  # Replace with your actual speed file name
-        PBF_FILE: ./data/osm.pbf  # Replace with your actual PBF file name
+        SPEED_FILE: ./data/osrm/speeds.csv  # Replace with your actual speed file name
+        PBF_FILE: ./data/shared/osm.pbf  # Replace with your actual PBF file name
     ports:
-      - "8080:8080"
+      - ${OSRM_PORT}:8080
     volumes:
-      - ./data/speeds.csv:/media/speed_file.csv
-      - ./data/osm.pbf:/media/location_file.osm.pbf
+      - ./data/osrm/speeds.csv:/media/speed_file.csv
+      - ./data/shared/osm.pbf:/media/location_file.osm.pbf
     deploy:
       resources:
         limits:
@@ -49,13 +56,30 @@ services:
     restart: unless-stopped
     container_name: osrm
 
+  # MERGED_gtfs.zip is hardcoded here.
+  # You probably do not need the ./data/valhalla:/custom_files
+  valhalla:
+    image: ghcr.io/nilsnolde/docker-valhalla/valhalla:latest
+    environment:
+      - build_transit=Force
+      - build_time_zones=Force
+      - traffic_name=""
+    volumes:
+      - ./data/valhalla:/custom_files
+      - ./data/shared/osm.pbf:/custom_files/osm.pbf
+      - ./data/shared/MERGED_gtfs:/gtfs_feeds/gtfs
+    restart: unless-stopped
+    ports:
+      - ${VALHALLA_PORT}:8002
+
   vroom:
     image: ghcr.io/vroom-project/vroom-docker:v1.14.0
     environment:
-      - VROOM_ROUTER=osrm
+      - VROOM_ROUTER=${VROOM_ROUTER}
     volumes:
-      - ./data/conf:/conf
+      - ../data/vroom:/conf
     ports:
-      - "3000:3000"
+      - ${VROOM_PORT}:3000
     depends_on:
       - osrm
+      - valhalla
