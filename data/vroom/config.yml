@@ -17,9 +17,9 @@ cliArgs:
 routingServers:
   osrm:
     car:
-      host: osrm
+      host: 'osrm'
       port: '8080'
   valhalla:
     auto:
-      host: valhalla  # Or the IP/hostname of your Valhalla server
+      host: 'valhalla'  # Or the IP/hostname of your Valhalla server
       port: '8002'       # Default Valhalla port

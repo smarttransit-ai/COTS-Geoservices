@@ -36,37 +36,20 @@ services:
         condition: service_healthy
     container_name: serve_otp
     restart: unless-stopped
-  
-  osrm:
-    build:
-      context: .
-      dockerfile: OSRM_Dockerfile
-      args:
-        SPEED_FILE: ./data/osrm/speeds.csv  # Replace with your actual speed file name
-        PBF_FILE: ./data/shared/osm.pbf  # Replace with your actual PBF file name
-    ports:
-      - ${OSRM_PORT}:8080
-    volumes:
-      - ./data/osrm/speeds.csv:/media/speed_file.csv
-      - ./data/shared/osm.pbf:/media/location_file.osm.pbf
-    deploy:
-      resources:
-        limits:
-          memory: 4g  # Adjust memory limit as needed
-    restart: unless-stopped
-    container_name: osrm
 
   # MERGED_gtfs.zip is hardcoded here.
   # You probably do not need the ./data/valhalla:/custom_files
   valhalla:
-    image: ghcr.io/nilsnolde/docker-valhalla/valhalla:latest
+    image: ghcr.io/valhalla/valhalla-scripted:latest
+    container_name: valhalla
     environment:
-      - build_transit=Force
-      - build_time_zones=Force
+      - build_transit=False
+      - build_time_zones=True
+      - build_admins=True
       - traffic_name=""
+      - build_tar=True
     volumes:
       - ./data/valhalla:/custom_files
-      - ./data/shared/osm.pbf:/custom_files/osm.pbf
       - ./data/shared/MERGED_gtfs:/gtfs_feeds/gtfs
     restart: unless-stopped
     ports:
@@ -74,12 +57,38 @@ services:
 
   vroom:
     image: ghcr.io/vroom-project/vroom-docker:v1.14.0
+    container_name: vroom
     environment:
       - VROOM_ROUTER=${VROOM_ROUTER}
     volumes:
-      - ../data/vroom:/conf
+      - ./data/vroom:/conf
     ports:
       - ${VROOM_PORT}:3000
     depends_on:
       - osrm
       - valhalla
+
+  osrm:
+    image: ghcr.io/project-osrm/osrm-backend:v6.0.0
+    container_name: osrm
+    volumes:
+      - ./data/osrm:/data
+      - ./data/osrm/car.lua:/opt/car.lua
+    command: >
+      sh -c "osrm-extract -p /opt/car.lua /data/${OSRM_PBF} &&
+             osrm-partition /data/${OSRM_BASE}.osrm &&
+             osrm-customize /data/${OSRM_BASE}.osrm &&
+             osrm-contract /data/${OSRM_BASE}.osrm --segment-speed-file /data/${SPEED_CSV} &&
+             osrm-routed --algorithm mld --max-alternatives 10 --max-table-size=10000 /data/${OSRM_BASE}.osrm"
+    environment:
+      - OSRM_PBF=tn.osm.pbf
+      - OSRM_BASE=tn
+      - SPEED_CSV=speeds.csv
+    ports:
+      - ${OSRM_PORT}:5000
+    deploy:
+      resources:
+        limits:
+          memory: 4g  # Adjust memory limit as needed
+    restart: unless-stopped
+    

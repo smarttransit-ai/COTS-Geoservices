@@ -205,3 +205,4 @@ custom_files/
 gtfs_feeds/
 data/valhalla/**
 data/shared/**
+data/osrm/**

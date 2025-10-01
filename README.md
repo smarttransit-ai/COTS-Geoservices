@@ -26,7 +26,12 @@ This uses a custom build that increases the potential alternative routes for any
 This is built from a Dockerfile that, if provided a proper speeds.csv, will modify the edge speeds of the network. For more information on modifying or generating the speeds.csv, checkout [custom osrm speeds](https://github.com/smarttransit-ai/custom_osrm_speeds).
 
 ## VROOM
-This uses the latest version of Vroom as of writing (v1.14.0) and the included config.yml file will point directly to the OSRM instance (included here) on the same docker network.
+This uses the latest version of Vroom as of writing (v1.14.0) and the included config.yml file will point directly to the OSRM instance (included here) on the same docker network. For our particular use case, **ensure that your depots are on a road** or at least you have used the other tools to project your locations to the nearest road.
+
+> Note, the environment variable VROOM_ROUTER has precedence over the router setting in config.yml.
+
+## Valhalla
+The advantages of Valhalla is in its ability to mark exclude locations and the capability of adding time aware speeds to its roads. More information on the Docker image is [here](https://github.com/valhalla/valhalla/tree/master/docker). We are using scripted image for this repo. It lets the user configure the whole tile build parameters using environment variables..
 
 ## OTP
 This is different from the two planners/solvers/routing machines, instead this relies on the osm map and a gtfs. The limitation is it requires a single GTFS file no matter how many agencies you are trying to use and it will only set the date for a single day (so your queries need to be set to that day). To do this, we have to first merge the different files.
@@ -54,7 +59,7 @@ Since these have different timezones and OTP only supports single timezones, we 
 ## Setup and Deployment
 1. Install docker desktop or docker on the server.
 3. Download and place the pbf file into the `./data/shared` folder.
-    `curl https://download.geofabrik.de/north-america/us/tennessee-latest.osm.pbf -o ./data/shared/osm.pbf`
+    `curl https://download.geofabrik.de/north-america/us/tennessee-latest.osm.pbf -o ./data/shared/tn.osm.pbf`
 3. Generate speeds.csv: `touch ./data/osrm/speeds.csv`
 2. Ensure that the `./data` folder has the following contents:
     ```bash.
@@ -69,7 +74,7 @@ Since these have different timezones and OTP only supports single timezones, we 
     └── vroom
         └── config.yml # used by VROOM to point to OSRM/Valhalla services
     ```
-    > Ensure that the gtfs, osm and speeds all point to the same area and have some overlap
+    > Ensure that the gtfs, osm and speeds all point to the same area and have some overlap. This has the unfortunate side-effect of causing Valhalla (so far only this) to keep rebuilding (maybe the hashes were not properly saved).
 3. `docker compose -f docker-compose.yml --env-file .env build`
 3. `docker compose -f docker-compose.yml --env-file .env up`
 
