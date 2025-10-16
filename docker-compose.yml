@@ -93,4 +93,127 @@ services:
         limits:
           memory: 4g  # Adjust memory limit as needed
     restart: unless-stopped
-    
+
+  # osrm-preprocess:
+  #   image:  ghcr.io/project-osrm/osrm-backend:v6.0.0
+  #   profiles: ["init"]         # Only runs when you include this profile
+  #   volumes:
+  #     - ./data/osrm/:/data
+  #     - ./data/shared/data.osm.pbf:/data/data.osm.pbf
+  #   entrypoint: ["/bin/sh","-lc"]
+  #   command: >
+  #     'echo "[OSRM] Starting preprocessing...";
+  #      osrm-extract -p /opt/car.lua /data/data.osm.pbf;
+  #      osrm-partition /data/used.osrm;
+  #      osrm-customize /data/used.osrm;'
+
+  # valhalla-preprocess:
+  #   image: ghcr.io/nilsnolde/docker-valhalla/valhalla:latest
+  #   profiles: ["init"]         # Only runs when you include this profile
+  #   environment:
+  #     - force_rebuild=True
+  #     - use_tiles_ignore_pbf=False
+  #     - build_transit=True
+  #     - build_time_zones=True
+  #     - traffic_name=traffic
+  #   volumes:
+  #     - ./data/valhalla/:/custom_files
+  #     - ./data/shared/data.osm.pbf:/custom_files/data.osm.pbf
+  
+
+  photon-preprocess:
+    image: rtuszik/photon-docker:latest
+    profiles: ["init"]         # Only runs when you include this profile
+    volumes:
+      - ./data/photon:/photon/data/photon_data
+    depends_on:
+      - nominatim
+    entrypoint: ["/bin/sh","-lc"]
+    command: >
+      'echo "[PHOTON] Starting preprocessing...";
+      cd /photon/data;
+      java -jar "/photon/photon.jar" \
+        -nominatim-import \
+        -host nominatim \
+        -port 5432 \
+        -database nominatim \
+        -user nominatim \
+        -password mysecretpassword \
+        -languages en'
+
+  # osrm:
+  #   image: ghcr.io/project-osrm/osrm-backend:v6.0.0
+  #   ports:
+  #     - 5000:5000
+  #   volumes:
+  #     - ./data/osrm/:/data
+  #     - ./data/shared/data.osm.pbf:/data/data.osm.pbf
+  #   command: osrm-routed --algorithm mld /data/used.osrm
+  #   # depends_on:
+  #   #   osrm-preprocess:
+  #   #     condition: service_completed_successfully
+  #   deploy:
+  #     resources:
+  #       limits:
+  #         memory: 4g  # Adjust memory limit as needed
+  #   restart: unless-stopped
+  #   container_name: osrm
+
+  # valhalla:
+  #   image: ghcr.io/nilsnolde/docker-valhalla/valhalla:latest
+  #   environment:
+  #     - force_rebuild=False
+  #     - use_tiles_ignore_pbf=True
+  #     - build_transit=False
+  #     - build_time_zones=True
+  #     - traffic_name=traffic
+  #   ports:
+  #     - 8002:8002
+  #   volumes:
+  #     - ./data/valhalla/:/custom_files
+  #     - ./data/shared/data.osm.pbf:/custom_files/data.osm.pbf
+
+  nominatim:
+    image: mediagis/nominatim:5.1
+    environment:
+      - PBF_PATH=/data/data.osm.pbf
+    ports:
+      - 8081:8080
+      - 5432:5432
+    volumes:
+      - ./data/nominatim:/var/lib/postgresql/16/main
+      - ./data/shared/data.osm.pbf:/data/data.osm.pbf
+    restart: unless-stopped
+
+  photon:
+    image: rtuszik/photon-docker:latest
+    environment:
+      - UPDATE_STRATEGY=DISABLED
+      - INITIAL_DOWNLOAD=FALSE
+    volumes:
+      - ./data/photon:/photon/data/photon_data
+    restart: unless-stopped
+    ports:
+      - "2322:2322"
+
+  overpass:
+    image: wiktorn/overpass-api:latest
+    environment:
+      - OVERPASS_META=yes
+      - OVERPASS_MODE=init
+      - OVERPASS_RULES_LOAD=100
+      - OVERPASS_PLANET_URL=file:///data.osm.pbf
+      - OVERPASS_UPDATE_SLEEP=infinity
+      - OVERPASS_PLANET_PREPROCESS=mv /db/planet.osm.bz2 /db/planet.osm.pbf && osmium cat -o /db/planet.osm.bz2 /db/planet.osm.pbf && rm /db/planet.osm.pbf
+      - OVERPASS_USE_AREAS=false # AREAS IS BROKEN
+      - OVERPASS_ALLOW_DUPLICATE_QUERIES=yes
+    ports:
+      - 1234:80
+    volumes:
+      - overpass:/db # This needs to be a named volume because of how Overpass works with its DB
+      - ./data/shared/data.osm.pbf:/data.osm.pbf
+    restart: unless-stopped
+    # The following command can be used to fix permission issues with the Overpass DB volume if needed.
+    # docker exec -it COTS_SOLVERS-overpass-1 bash -lc 'set -e && chmod 755 /db /db/db && stat -c "%A %U:%G %n" /db /db/db'
+volumes:
+  overpass:
