@@ -1,20 +1,32 @@
-# Commercial-off-the-shelf Solvers - README OUTDATED - 
+# Commercial-off-the-shelf Geoservices
+This is a repository for several commercial, free and open source geoservices that we regularly use in the lab. The default configuration followed in this readme is for the state of Tennessee.
+
 - [Open Source Routing Machine (OSRM)](#osrm)
 - [Vehicle Routing Open-source Optimization Machine (VROOM)](#vroom)
 - [OpenTripPlanner (OTP)](#otp)
-- [Valhalla](#valhalla)
+- [photon](#photon)
+- [Overpass](#Overpass)
+- [Nominatim](#Nominatim)
 
-This is a repository for several commercial, free and open source solvers and planners that we regularly use in the lab.  
-The default configuration is for the state of Tennessee with included GTFS for the following transit agencies:
-* [WeGo](http://www.nashvillemta.org/GoogleExport/google_transit.zip)
-* [MATA](https://www.matatransit.com/how-do-you-travel/route-schedules/gtfs-feed/)
-* [KAT](https://knoxville.syncromatics.com/gtfs)
-* [JTA](https://data.trilliumtransit.com/gtfs/jackson-tn-us/jackson-tn-us.zip) 
-* [CARTA](https://www.gocarta.org/wp-content/uploads/2025/05/GTFS-1.zip)
-> These GTFS have been in no way cleaned and processed for mistakes, these are as is and are the latest versions as of 08-14-2025 and based on what is available from [Transitland](https://www.transit.land/).
-
-# Setup
-`git clone git@github.com:smarttransit-ai/COTS_SOLVERS.git`
+## Setup and Deployment
+1. Install docker desktop or docker on the server.
+0. `git clone git@github.com:smarttransit-ai/COTS-Geoservices.git`
+1. `cd COTS-Geoservices`
+3. Download and place the pbf file into the `./data/shared` folder.
+    `curl https://download.geofabrik.de/north-america/us/tennessee-latest.osm.pbf -o ./data/shared/tn.osm.pbf`
+3. Generate speeds.csv: `touch ./data/osrm/speeds.csv`
+2. `mkdir nominatim`
+1. `docker compose build`
+2. `docker compose --profile init up`
+4. ```
+   docker compose exec --user postgres nominatim \
+   psql -U postgres -d nominatim -c "ALTER USER nominatim WITH ENCRYPTED PASSWORD 'mysecretpassword';"
+   ```
+5. `docker compose --profile init up`
+6. `docker compose up -d`
+3. `docker exec -it overpass bash -lc 'set -e && chmod 755 /db /db/db && stat -c "%A %U:%G %n" /db /db/db'`
+7. Maybe you need to up serve-otp again.
+8. Verify: `python scripts/verify_deployment.py`
 
 ## Docker
 Follow the instructions [here](https://docs.docker.com/get-started/get-docker/).
@@ -41,6 +53,8 @@ This is different from the two planners/solvers/routing machines, instead this r
 Since these have different timezones and OTP only supports single timezones, we will also modify it to be all `America/Chicago` or Central Time.
 0. `mkdir -p ./scripts/data/input`
 1. Place all zipped GTFS files in `./scripts/data`.
+    > These GTFS have been in no way cleaned and processed for mistakes, these are as is and are the latest versions as of 08-14-2025 and based on what is available from [Transitland](https://www.transit.land/).
+
     ```bash
     curl -L --fail --retry 3 "https://data.trilliumtransit.com/gtfs/jackson-tn-us/jackson-tn-us.zip?utm_source=transitland" -o ./scripts/data/input/jta.zip && \
     curl -L --fail --retry 3 "https://gtfs.mata.cadavl.com/MATA/GTFS/GTFS_MATA.zip" -o ./scripts/data/input/mata.zip && \
@@ -56,43 +70,37 @@ Since these have different timezones and OTP only supports single timezones, we 
 2. `docker run -it --rm --name my-running-script -v "$PWD/scripts":/usr/src/myapp -w /usr/src/myapp python:3.10 bash -c "pip install --no-cache-dir -r requirements.txt && python main.py"`
 5. Move or copy the new zipped gtfs `sciprts/data/temp_output/MERGED_gtfs.zip` to `./data/shared/gtfs_feeds`.
 
-## Setup and Deployment
-1. Install docker desktop or docker on the server.
-3. Download and place the pbf file into the `./data/shared` folder.
-    `curl https://download.geofabrik.de/north-america/us/tennessee-latest.osm.pbf -o ./data/shared/tn.osm.pbf`
-3. Generate speeds.csv: `touch ./data/osrm/speeds.csv`
-2. Ensure that the `./data` folder has the following contents:
-    ```bash.
-    ├── opentripplanner
-    ├── osrm
-    │   └── speeds.csv # for setting up edge weights on OSRM
-    ├── shared
-    │   ├── merged_gtfs.zip # for OTP/Valhalla, GTFS you want to use
-    │   ├── merged_gtfs #unzipped gtfs folder for valhalla
-    │   └── osm.pbf # tiles used for OSRM and OTP
-    ├── valhalla # Mounted to Valhalla
-    └── vroom
-        └── config.yml # used by VROOM to point to OSRM/Valhalla services
-    ```
-    > Ensure that the gtfs, osm and speeds all point to the same area and have some overlap. This has the unfortunate side-effect of causing Valhalla (so far only this) to keep rebuilding (maybe the hashes were not properly saved).
-3. `docker compose -f docker-compose.yml --env-file .env build`
-3. `docker compose -f docker-compose.yml --env-file .env up`
+## photon
+photon is an open source geocoder built for OpenStreetMap data. It is based on elasticsearch/OpenSearch - an efficient, powerful and highly scalable search platform.
+photon was started by komoot who also provide the public demo server at photon.komoot.io.
 
+## Overpass
+The Overpass API is a read-only API that serves up custom selected parts of the OSM map data. It acts as a database over the web: the client sends a query to the API and gets back the data set that corresponds to the query. 
+
+## Nominatim
+Nominatim (from the Latin, 'by name') is a tool to search OpenStreetMap data by name and address (geocoding) and to generate synthetic addresses of OSM points (reverse geocoding). An instance with up-to-date data can be found at https://nominatim.openstreetmap.org. Nominatim is also used as one of the sources for the Search box on the OpenStreetMap home page.
 
 ## Verify
 This is setup for the default location of tennessee.
 1. Run `python scripts/verify_deployment.py`
+2. You might need to install `python-dotenv`
 2. The results should show:
 ```bash
 Verifying deployment...
 OSRM URL: localhost:8080/nearest/v1/driving/
-OTP URL: http://localhost:8081
+OTP URL: http://localhost:8083
 VROOM URL: http://localhost:3000
-Valhalla URL: http://localhost:8002
+VALHALLA URL: http://localhost:8002/status
+NOMINATIM URL: http://localhost:8081
+PHOTON URL: http://localhost:2322
+OVERPASS URL: http://localhost:1234/api
 Success: http://localhost:8080/nearest/v1/driving/-86.9024502,35.9067283 is reachable.
-Success: http://localhost:8081 is reachable.
+Success: http://localhost:8083 is reachable.
 Success: http://localhost:3000/health is reachable.
 Success: http://localhost:8002/status is reachable.
+Success: http://localhost:8081/search?q=Memphis&format=json is reachable.
+Success: http://localhost:2322/api?q=Nashv&limit=1 is reachable.
+Success: http://localhost:1234/api is reachable
 ```
 
 ## Things to do
@@ -102,3 +110,4 @@ Success: http://localhost:8002/status is reachable.
 # References
 * [Valhalla](https://github.com/valhalla/valhalla/tree/master/docker)
 * [time accurate routing](https://github.com/smarttransit-ai/valhalla/tree/main)
+

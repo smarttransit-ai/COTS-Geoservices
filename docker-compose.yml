@@ -4,7 +4,8 @@ services:
     environment:
       - JAVA_TOOL_OPTIONS=-Xmx8g
     volumes:
-      - ./data/shared:/var/opentripplanner
+      - ./data/otp:/var/opentripplanner
+      - ./data/shared/data.osm.pbf:/var/opentripplanner/data.osm.pbf
     command: --build --save
     deploy:
       resources:
@@ -23,7 +24,8 @@ services:
     environment:
       - JAVA_TOOL_OPTIONS=-Xmx8g
     volumes:
-      - ./data/shared:/var/opentripplanner
+      - ./data/otp:/var/opentripplanner
+      - ./data/shared/data.osm.pbf:/var/opentripplanner/data.osm.pbf
     ports:
       - ${OTP_PORT}:8080
     command: --load --serve
@@ -49,8 +51,9 @@ services:
       - traffic_name=""
       - build_tar=True
     volumes:
+      - ./data/otp/MERGED_gtfs:/gtfs_feeds/gtfs
       - ./data/valhalla:/custom_files
-      - ./data/shared/MERGED_gtfs:/gtfs_feeds/gtfs
+      - ./data/shared/data.osm.pbf:/custom_files/data.osm.pbf
     restart: unless-stopped
     ports:
       - ${VALHALLA_PORT}:8002
@@ -73,6 +76,7 @@ services:
     container_name: osrm
     volumes:
       - ./data/osrm:/data
+      - ./data/shared/data.osm.pbf:/data/${OSRM_PBF}
       - ./data/osrm/car.lua:/opt/car.lua
     command: >
       sh -c "if [ ! -f /data/${OSRM_BASE}.osrm.cells ] ; then
@@ -83,8 +87,8 @@ services:
              fi &&
              osrm-routed --algorithm mld --max-alternatives 10 --max-table-size=10000 /data/${OSRM_BASE}.osrm"
     environment:
-      - OSRM_PBF=tn.osm.pbf
-      - OSRM_BASE=tn
+      - OSRM_PBF=data.osm.pbf
+      - OSRM_BASE=data
       - SPEED_CSV=speeds.csv
     ports:
       - ${OSRM_PORT}:5000
@@ -140,6 +144,8 @@ services:
         -user nominatim \
         -password mysecretpassword \
         -languages en'
+  # docker compose exec --user postgres nominatim \
+  # psql -U postgres -d nominatim -c "ALTER USER nominatim WITH ENCRYPTED PASSWORD 'mysecretpassword';"
 
   # osrm:
   #   image: ghcr.io/project-osrm/osrm-backend:v6.0.0
@@ -175,10 +181,11 @@ services:
 
   nominatim:
     image: mediagis/nominatim:5.1
+    container_name: nominatim
     environment:
       - PBF_PATH=/data/data.osm.pbf
     ports:
-      - 8081:8080
+      - ${NOMINATIM_PORT}:8080
       - 5432:5432
     volumes:
       - ./data/nominatim:/var/lib/postgresql/16/main
@@ -187,6 +194,7 @@ services:
 
   photon:
     image: rtuszik/photon-docker:latest
+    container_name: photon
     environment:
       - UPDATE_STRATEGY=DISABLED
       - INITIAL_DOWNLOAD=FALSE
@@ -194,10 +202,11 @@ services:
       - ./data/photon:/photon/data/photon_data
     restart: unless-stopped
     ports:
-      - "2322:2322"
+      - ${PHOTON_PORT}:2322
 
   overpass:
     image: wiktorn/overpass-api:latest
+    container_name: overpass
     environment:
       - OVERPASS_META=yes
       - OVERPASS_MODE=init
@@ -208,7 +217,7 @@ services:
       - OVERPASS_USE_AREAS=false # AREAS IS BROKEN
       - OVERPASS_ALLOW_DUPLICATE_QUERIES=yes
     ports:
-      - 1234:80
+      - ${OVERPASS_PORT}:80
     volumes:
       - overpass:/db # This needs to be a named volume because of how Overpass works with its DB
       - ./data/shared/data.osm.pbf:/data.osm.pbf

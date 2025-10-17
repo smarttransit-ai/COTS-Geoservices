@@ -206,3 +206,4 @@ gtfs_feeds/
 data/valhalla/**
 data/shared/**
 data/osrm/**
+data/nominatim/**
