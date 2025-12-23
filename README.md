@@ -12,22 +12,41 @@ This is a repository for several commercial, free and open source geoservices th
 1. Install docker desktop or docker on the server.
 0. `git clone git@github.com:smarttransit-ai/COTS-Geoservices.git`
 1. `cd COTS-Geoservices`
+2. Install .venv in scripts with requirements.
 3. Download and place the pbf file into the `./data/shared` folder.
     `curl https://download.geofabrik.de/north-america/us/tennessee-latest.osm.pbf -o ./data/shared/tn.osm.pbf`
 3. Generate speeds.csv: `touch ./data/osrm/speeds.csv`
-2. `mkdir nominatim`
+2. `mkdir data/nominatim`
 1. `docker compose build`
-2. `docker compose --profile init up`
-4. ```
-   docker compose exec --user postgres nominatim \
-   psql -U postgres -d nominatim -c "ALTER USER nominatim WITH ENCRYPTED PASSWORD 'mysecretpassword';"
-   ```
-5. `docker compose --profile init up`
+2. Run `docker compose --profile init up`.
+4. In another terminal, run:
+    ```bash
+    docker compose exec --user postgres nominatim \
+    psql -U postgres -d nominatim -c "ALTER USER nominatim WITH ENCRYPTED PASSWORD 'mysecretpassword';"
+    $ ALTER ROLE # response
+    ```
+5. Go back to the other terminal, `ctrl+c` then run `docker compose --profile init up` again.
 6. `docker compose up -d`
 3. `docker exec -it overpass bash -lc 'set -e && chmod 755 /db /db/db && stat -c "%A %U:%G %n" /db /db/db'`
 7. Maybe you need to up serve-otp again.
-8. Verify: `python scripts/verify_deployment.py`
-
+8. Verify: `./scripts/.venv/bin/python ./scripts/verify_deployment.py`
+    ```bash
+    Verifying deployment...
+    OSRM URL: localhost:8080/nearest/v1/driving/
+    OTP URL: http://localhost:8083
+    VROOM URL: http://localhost:3000
+    VALHALLA URL: http://localhost:8002/status
+    NOMINATIM URL: http://localhost:8081
+    PHOTON URL: http://localhost:2322
+    OVERPASS URL: http://localhost:1234/api
+    Success: http://localhost:8080/nearest/v1/driving/-86.9024502,35.9067283 is reachable.
+    Success: http://localhost:8083 is reachable.
+    Success: http://localhost:3000/health is reachable.
+    Success: http://localhost:8002/status is reachable.
+    Success: http://localhost:8081/search?q=Memphis&format=json is reachable.
+    Success: http://localhost:2322/api?q=Nashv&limit=1 is reachable.
+    Success: http://localhost:1234/api is reachable.
+    ```
 ## Docker
 Follow the instructions [here](https://docs.docker.com/get-started/get-docker/).
 
